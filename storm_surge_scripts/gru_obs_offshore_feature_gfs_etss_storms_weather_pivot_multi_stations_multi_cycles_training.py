@@ -1,26 +1,22 @@
 #!/contrib/Mamoudou.Ba/miniconda3/envs/mlaws2t/bin/python
 ########################################################################
 # Script developed with the assistance of the Gemini AI code assistant. #
-# Multi-Station GFS Weather (4-Quadrant T, P, Wind) + ETSS Pivot GRU    #
 ########################################################################
+import os, sys
 
-import os, sys, math, joblib, numpy as np, pandas as pd, tensorflow as tf
-# 🌟 FORCE KERAS 2 DESERIALIZER
-os.environ["TF_USE_LEGACY_KERAS"] = "1"
+# 🌟 PRIORITIZE SYSTEM CUDA DRIVERS OVER CONDA ENV BINARIES
+os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64:' + os.environ.get('LD_LIBRARY_PATH', '')
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+import numpy as np, pandas as pd, tensorflow as tf, joblib
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import GRU, Dense, Dropout
 from sklearn.preprocessing import RobustScaler
 from sklearn.model_selection import train_test_split
 import tensorflow.keras.backend as K
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras import mixed_precision
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
-# --- 1. Environment & Policy ---
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_global_policy(policy)
-
-# Dynamic GPU Memory Growth
+# Prevent TF from hogging all GPU VRAM instantly
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
     try:
@@ -46,7 +42,7 @@ MODELS_PATH = '../storm_surge/'
 ALPHA = 0.50
 N_FUTURE = 12     # 12-hour chunk operational layout
 GAP_THRESHOLD = 24.0
-N_OFFSHORE_CELLS = 4   # 4 Quadrants (c1, c2, c3, c4)
+N_OFFSHORE_CELLS = 4    # 4 Quadrants (c1, c2, c3, c4)
 
 # =====================================================================
 # 🌟 CUSTOM AGGRESSIVE WEIGHTED LOSS FUNCTION
@@ -102,8 +98,8 @@ for idx, row in df_config.iterrows():
     STATION_ID = str(row['station_id']).strip()
     STATION_NAME = str(row['station_name']).strip().replace(", ", "_").replace(" ", "_").replace(".", "")
 
-    OBS_DATA_FILE = os.path.join(MODELS_PATH, f'obs_{STATION_ID}_2021_2026.csv')
-    GFS_SPATIAL_DATA_FILE = f'training_gfs_etss_spatial_data_{STATION_ID}_2021_2025.csv'
+    OBS_DATA_FILE = os.path.join(MODELS_PATH, f'obs_{STATION_ID}_wl_only.csv')
+    GFS_SPATIAL_DATA_FILE = f'training_gfs_etss_spatial_data_{STATION_ID}_2020_2025.csv'
 
     if not os.path.exists(GFS_SPATIAL_DATA_FILE):
         GFS_SPATIAL_DATA_FILE = os.path.join(MODELS_PATH, f'training_gfs_etss_spatial_data_{STATION_ID}_2021_2025.csv')
@@ -120,12 +116,17 @@ for idx, row in df_config.iterrows():
         print(f"🔄 Syncing Observation History and 4-Quadrant GFS Guidance Matrices...")
         df_obs = pd.read_csv(OBS_DATA_FILE)
         t_obs_col = 'timestamp' if 'timestamp' in df_obs.columns else 'timestamp_gui'
-        df_obs['dt'] = pd.to_datetime(df_obs[t_obs_col], errors='coerce', format='mixed').dt.round('h')
+
+        # 🌟 TIMESTAMP FORMAT NORMALIZER: Fixes "2021-01-01 00 00 00" space formatting
+        df_obs[t_obs_col] = df_obs[t_obs_col].astype(str).str.replace(r'(\d{2}) (\d{2}) (\d{2})$', r'\1:\2:\3', regex=True)
+        df_obs['dt'] = pd.to_datetime(df_obs[t_obs_col], errors='coerce').dt.round('h')
         df_obs = df_obs.dropna(subset=['dt']).set_index('dt').sort_index()
 
         df_gfs = pd.read_csv(GFS_SPATIAL_DATA_FILE)
         t_gfs_col = 'timestamp_gui' if 'timestamp_gui' in df_gfs.columns else 'timestamp'
-        df_gfs['dt'] = pd.to_datetime(df_gfs[t_gfs_col], errors='coerce', format='mixed').dt.round('h')
+
+        df_gfs[t_gfs_col] = df_gfs[t_gfs_col].astype(str).str.replace(r'(\d{2}) (\d{2}) (\d{2})$', r'\1:\2:\3', regex=True)
+        df_gfs['dt'] = pd.to_datetime(df_gfs[t_gfs_col], errors='coerce').dt.round('h')
         df_gfs = df_gfs.dropna(subset=['dt']).set_index('dt').sort_index()
 
         # Join datasets on inner index alignment
@@ -139,7 +140,7 @@ for idx, row in df_config.iterrows():
         gfs_4quad_cols = []
         for c in range(1, N_OFFSHORE_CELLS + 1):
             gfs_4quad_cols.extend([f'c{c}_wind_u_gui', f'c{c}_wind_v_gui', f'c{c}_air_pressure_gui', f'c{c}_air_temp_gui'])
-            
+
             # Derive 4-quadrant Wind Speed if U and V exist
             u_col, v_col, ws_col = f'c{c}_wind_u_gui', f'c{c}_wind_v_gui', f'c{c}_wind_speed_gui'
             if u_col in data.columns and v_col in data.columns:
@@ -168,7 +169,7 @@ for idx, row in df_config.iterrows():
         if 'wind_gust' not in data.columns and 'wind_speed' in data.columns:
             data['wind_gust'] = data['wind_speed'] * 1.2
 
-        # 🌟 AUTOMATED FALLBACK IMPUTATION FOR SENSOR FREEZE-OUTS (e.g., Nome, AK)
+        # 🌟 AUTOMATED FALLBACK IMPUTATION FOR SENSOR FREEZE-OUTS
         for met_param, gfs_param in [('air_temp', 'air_temp_gui'), ('air_pressure', 'air_pressure_gui'), ('wind_speed', 'wind_speed_gui')]:
             if met_param in data.columns and gfs_param in data.columns:
                 data[met_param] = data[met_param].fillna(data[gfs_param])
@@ -195,7 +196,7 @@ for idx, row in df_config.iterrows():
             data = data[active_cycle_mask].copy()
         data = data.ffill().bfill()
 
-        # 🌟 FIX: Both feature vectors MUST have identical column counts (25 cols each)
+        # Both feature vectors have identical column counts
         obs_weather = ['air_temp', 'air_pressure', 'wind_speed', 'wind_gust', 'etss_surge_guidance'] + gfs_4quad_cols
         gfs_guidance = ['air_temp_gui', 'air_pressure_gui', 'wind_speed_gui', 'wind_gust_gui', 'etss_surge_guidance'] + gfs_4quad_cols
         TARGET = 'surge_residual'
@@ -206,7 +207,9 @@ for idx, row in df_config.iterrows():
 
     # --- 5. Training Horizon Loops ---
     for n_past in [24, 48]:
-        MODEL_NAME = f"{STATION_NAME}_{N_FUTURE}_4QUADRANT_GFS_ETSS_PIVOT_ROBUST_{n_past}past_CHRONO"
+        MODEL_NAME = f"{STATION_NAME}_{N_FUTURE}_OBS_WEATHER_4QUADRANT_GFS_ETSS_PIVOT_ROBUST_{n_past}past_CHRONO"
+        EPOCHS = 350
+        model_save_path = os.path.join(MODELS_PATH, f'{MODEL_NAME}.weights.h5')
         print(f"\n🚀 Training 4-Quadrant Model Configuration Block: {MODEL_NAME}")
 
         data['storm_block_id'] = (data.index.to_series().diff() > pd.Timedelta(hours=GAP_THRESHOLD)).cumsum()
@@ -251,21 +254,45 @@ for idx, row in df_config.iterrows():
         opt = tf.keras.optimizers.Adam(learning_rate=0.0001, clipnorm=1.0)
         model.compile(optimizer=opt, loss=baseline_loss_fn)
 
-        early_stop = EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
-        model.fit(
+        callbacks = [
+            EarlyStopping(
+                monitor='val_loss',
+                mode='min',
+                patience=5,
+                restore_best_weights=True,
+                verbose=1,
+            ),
+            ReduceLROnPlateau(
+                monitor='val_loss',
+                factor=0.5,
+                patience=2,
+                min_lr=1e-6,
+                verbose=1,
+            ),
+            ModelCheckpoint(
+                model_save_path,
+                monitor='val_loss',
+                mode='min',
+                save_best_only=True,
+                save_weights_only=True,
+                verbose=1,
+            )
+        ]
+
+        history = model.fit(
             X_train, y_train,
-            epochs=350,
-            batch_size=64,
             validation_data=(X_test, y_test),
-            callbacks=[early_stop],
+            epochs=EPOCHS,
+            batch_size=32,
+            callbacks=callbacks,
             verbose=1
         )
 
         # Save weights, scalers, and architecture JSON
-        model.save_weights(os.path.join(MODELS_PATH, f'{MODEL_NAME}.h5'))
+        model.save_weights(model_save_path)
 
-        s_f_name = f"{STATION_NAME}_scaler_4quadrant_gfs_etss_pivot_robust_{n_past}h_CHRONO.joblib"
-        s_t_name = f"{STATION_NAME}_scaler_4quadrant_gfs_etss_pivot_target_robust_{n_past}h_CHRONO.joblib"
+        s_f_name = f"{STATION_NAME}_scaler_obs_weather_4quadrant_gfs_etss_pivot_robust_{n_past}h_CHRONO.joblib"
+        s_t_name = f"{STATION_NAME}_scaler_obs_weather_4quadrant_gfs_etss_pivot_target_robust_{n_past}h_CHRONO.joblib"
 
         joblib.dump(scaler_p, os.path.join(MODELS_PATH, s_f_name))
         joblib.dump(scaler_t, os.path.join(MODELS_PATH, s_t_name))
