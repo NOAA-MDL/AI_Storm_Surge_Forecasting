@@ -38,7 +38,7 @@ LOG_DIR="$BASE_DIR/logs"
 
 #PIVOT_SCRIPT="gru_obs_storms_weather_pivot_multi_stations_multi_cycles_ptuvg_training.py"
 
-PIVOT_SCRIPT="gru_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
+#PIVOT_SCRIPT="gru_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
 
 #PIVOT_SCRIPT="gru_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_uv_training.py"
 
@@ -46,7 +46,7 @@ PIVOT_SCRIPT="gru_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_
 
 #PIVOT_SCRIPT="lstm_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
 
-#PIVOT_SCRIPT="gru_obs_offshore_feature_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
+PIVOT_SCRIPT="gru_obs_offshore_feature_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
 
 
 # 🌟 Load Cluster CUDA Modules (fallback to path if module fails)

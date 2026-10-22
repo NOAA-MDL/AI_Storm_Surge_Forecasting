@@ -93,7 +93,7 @@ for idx_stn, row in df_config.iterrows():
     STATION_ID = str(row['station_id']).strip()
     STATION_NAME = str(row['station_name']).strip()
 
-    if STATION_ID != "8726520": continue
+    if STATION_ID != "8729108": continue
 
     df_g_path = os.path.join(MODELS_PATH, f'test_gfs_etss_data_{STATION_ID}_2026.csv')
     df_o_path = os.path.join(MODELS_PATH, f'obs_{STATION_ID}_2020_2026.csv')
@@ -185,7 +185,7 @@ for idx_stn, row in df_config.iterrows():
     cached_models = {}
     cached_scalers = {}
     load_failure = False
-
+    STATION_ID != "8726520"
     for n_past in lookbacks:
         key = f"CHRONO_{n_past}"
         m_name = f"{STATION_NAME}_{N_FUTURE_TRAINED}_GRU_GFS_ETSS_PIVOT_SAMPLE_WEIGHTING_ROBUST_{n_past}past_CHRONO"

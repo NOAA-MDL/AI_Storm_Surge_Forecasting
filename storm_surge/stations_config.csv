@@ -22,3 +22,4 @@ station_id,station_name,latitude,longitude,datum,timezone
 8651370,"Duck Pier, NC",36.18,-75.75,NAVD88,GMT
 8570283,"Ocean City, MD",38.33,-75.09,NAVD88,GMT
 8721604,"Trident Pier, FL",28.42,-80.59,NAVD88,GMT
+8729108,"Panama City, FL",30.15,-85.66,NAVD88,GMT
