@@ -12,3 +12,9 @@
 *.h5
 *.joblib
 *.csv
+*.log
+storm_surge/wget_*.log
+storm_surge_scripts/wl_*
+nohup.out
+*.out
+storm_surge_scripts/nohup.out
