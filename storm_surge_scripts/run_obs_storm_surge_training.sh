@@ -24,29 +24,8 @@ BASE_DIR="/contrib/Mamoudou.Ba/storm_surge_scripts/"
 LOG_DIR="$BASE_DIR/logs"
 
 # 🌟 Active loop-optimized python script definitions
-#PIVOT_SCRIPT="gru_obs_storms_weather_pivot_multi_stations_multi_cycles_training.py"
-
-#PIVOT_SCRIPT="gru_obs_storms_weather_pivot_multi_stations_multi_cycles_wind_uv_training.py"
-
-#PIVOT_SCRIPT="gru_obs_storms_weather_pivot_wl_multi_stations_multi_cycles_training.py"
-
-#PIVOT_SCROPT="gru_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_2020_training.py"
-
-#PIVOT_SCRIPT="gru_obs_storms_weather_direct_multi_stations_multi_cycles_5gfs_variables_training.py"
-
-#PIVOT_SCRIPT="gru_obs_storms_weather_pivot_multi_stations_multi_cycles_5gfs_variables_training.py"
-
-#PIVOT_SCRIPT="gru_obs_storms_weather_pivot_multi_stations_multi_cycles_ptuvg_training.py"
-
-#PIVOT_SCRIPT="gru_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
-
-#PIVOT_SCRIPT="gru_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_uv_training.py"
-
-#PIVOT_SCRIPT="gru_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_uvgt_training.py"
-
-#PIVOT_SCRIPT="lstm_obs_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
-
-PIVOT_SCRIPT="gru_obs_offshore_feature_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
+#PIVOT_SCRIPT="gru_obs_offshore_feature_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
+PIVOT_SCRIPT="gru_gfs_weather_obs_etss_water_level_gfs_etss_water_level_multi_cycle_rolling_5gfs_training.py"
 
 
 # 🌟 Load Cluster CUDA Modules (fallback to path if module fails)

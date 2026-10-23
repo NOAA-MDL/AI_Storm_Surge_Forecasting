@@ -1,0 +1,228 @@
+nohup: ignoring input
+/contrib/Mamoudou.Ba/miniconda3/envs/mlaws2t/lib/python3.11/site-packages/pandas/core/computation/expressions.py:23: UserWarning: Pandas requires version '2.10.2' or newer of 'numexpr' (version '2.10.0' currently installed).
+  from pandas.core.computation.check import NUMEXPR_INSTALLED
+/contrib/Mamoudou.Ba/miniconda3/envs/mlaws2t/lib/python3.11/site-packages/pandas/core/arrays/masked.py:56: UserWarning: Pandas requires version '1.4.2' or newer of 'bottleneck' (version '1.4.0' currently installed).
+  from pandas.core import (
+
+============================================================
+Starting Water Level retrieval for station: 8729108 (Panama_City_FL)
+Missing values padded with: 99999.0
+============================================================
+--- Processing: January 2021 (API Range: 20210101 to 20210131) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: February 2021 (API Range: 20210201 to 20210228) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 672 rows (649 valid water level records, missing padded with 99999.0).
+--- Processing: March 2021 (API Range: 20210301 to 20210331) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: April 2021 (API Range: 20210401 to 20210430) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: May 2021 (API Range: 20210501 to 20210531) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: June 2021 (API Range: 20210601 to 20210630) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: July 2021 (API Range: 20210701 to 20210731) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: August 2021 (API Range: 20210801 to 20210831) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: September 2021 (API Range: 20210901 to 20210930) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: October 2021 (API Range: 20211001 to 20211031) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: November 2021 (API Range: 20211101 to 20211130) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: December 2021 (API Range: 20211201 to 20211231) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: January 2022 (API Range: 20220101 to 20220131) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: February 2022 (API Range: 20220201 to 20220228) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 672 rows (649 valid water level records, missing padded with 99999.0).
+--- Processing: March 2022 (API Range: 20220301 to 20220331) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: April 2022 (API Range: 20220401 to 20220430) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: May 2022 (API Range: 20220501 to 20220531) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: June 2022 (API Range: 20220601 to 20220630) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: July 2022 (API Range: 20220701 to 20220731) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: August 2022 (API Range: 20220801 to 20220831) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: September 2022 (API Range: 20220901 to 20220930) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: October 2022 (API Range: 20221001 to 20221031) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: November 2022 (API Range: 20221101 to 20221130) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: December 2022 (API Range: 20221201 to 20221231) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: January 2023 (API Range: 20230101 to 20230131) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: February 2023 (API Range: 20230201 to 20230228) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 672 rows (649 valid water level records, missing padded with 99999.0).
+--- Processing: March 2023 (API Range: 20230301 to 20230331) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: April 2023 (API Range: 20230401 to 20230430) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: May 2023 (API Range: 20230501 to 20230531) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: June 2023 (API Range: 20230601 to 20230630) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: July 2023 (API Range: 20230701 to 20230731) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: August 2023 (API Range: 20230801 to 20230831) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: September 2023 (API Range: 20230901 to 20230930) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: October 2023 (API Range: 20231001 to 20231031) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: November 2023 (API Range: 20231101 to 20231130) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: December 2023 (API Range: 20231201 to 20231231) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: January 2024 (API Range: 20240101 to 20240131) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: February 2024 (API Range: 20240201 to 20240229) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 696 rows (673 valid water level records, missing padded with 99999.0).
+--- Processing: March 2024 (API Range: 20240301 to 20240331) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: April 2024 (API Range: 20240401 to 20240430) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: May 2024 (API Range: 20240501 to 20240531) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: June 2024 (API Range: 20240601 to 20240630) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: July 2024 (API Range: 20240701 to 20240731) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: August 2024 (API Range: 20240801 to 20240831) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: September 2024 (API Range: 20240901 to 20240930) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: October 2024 (API Range: 20241001 to 20241031) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: November 2024 (API Range: 20241101 to 20241130) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: December 2024 (API Range: 20241201 to 20241231) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: January 2025 (API Range: 20250101 to 20250131) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: February 2025 (API Range: 20250201 to 20250228) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 672 rows (649 valid water level records, missing padded with 99999.0).
+--- Processing: March 2025 (API Range: 20250301 to 20250331) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: April 2025 (API Range: 20250401 to 20250430) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: May 2025 (API Range: 20250501 to 20250531) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: June 2025 (API Range: 20250601 to 20250630) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: July 2025 (API Range: 20250701 to 20250731) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: August 2025 (API Range: 20250801 to 20250831) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: September 2025 (API Range: 20250901 to 20250930) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: October 2025 (API Range: 20251001 to 20251031) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: November 2025 (API Range: 20251101 to 20251130) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: December 2025 (API Range: 20251201 to 20251231) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: January 2026 (API Range: 20260101 to 20260131) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: February 2026 (API Range: 20260201 to 20260228) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 672 rows (649 valid water level records, missing padded with 99999.0).
+--- Processing: March 2026 (API Range: 20260301 to 20260331) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: April 2026 (API Range: 20260401 to 20260430) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: May 2026 (API Range: 20260501 to 20260531) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: June 2026 (API Range: 20260601 to 20260630) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: July 2026 (API Range: 20260701 to 20260731) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: August 2026 (API Range: 20260801 to 20260831) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (721 valid water level records, missing padded with 99999.0).
+--- Processing: September 2026 (API Range: 20260901 to 20260930) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (697 valid water level records, missing padded with 99999.0).
+--- Processing: October 2026 (API Range: 20261001 to 20261031) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (327 valid water level records, missing padded with 99999.0).
+--- Processing: November 2026 (API Range: 20261101 to 20261130) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 720 rows (0 valid water level records, missing padded with 99999.0).
+--- Processing: December 2026 (API Range: 20261201 to 20261231) ---
+  > Pulling Water Level... Done.
+  [OK] Saved 744 rows (0 valid water level records, missing padded with 99999.0).
+
+🏁 Finished. Water level data stored in: ../storm_surge/obs_8729108_2021_2026.csv

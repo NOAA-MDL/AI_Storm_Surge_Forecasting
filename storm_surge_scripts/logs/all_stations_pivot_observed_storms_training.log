@@ -1,0 +1,15 @@
+/contrib/Mamoudou.Ba/miniconda3/envs/mlaws2t/lib/python3.11/site-packages/pandas/core/computation/expressions.py:23: UserWarning: Pandas requires version '2.10.2' or newer of 'numexpr' (version '2.10.0' currently installed).
+  from pandas.core.computation.check import NUMEXPR_INSTALLED
+/contrib/Mamoudou.Ba/miniconda3/envs/mlaws2t/lib/python3.11/site-packages/pandas/core/arrays/masked.py:56: UserWarning: Pandas requires version '1.4.2' or newer of 'bottleneck' (version '1.4.0' currently installed).
+  from pandas.core import (
+✅ Dynamic GPU Memory Growth Engaged.
+
+================================================================================
+🏭 OPERATIONAL 4-QUADRANT PIVOT GENERATOR ENGINE FOR: Fort_Myers_FL (8725520)
+   Observation Source File: ../storm_surge/obs_training_8725520.csv
+================================================================================
+🔄 Syncing Water Level History and 4-Quadrant GFS Guidance Matrices...
+
+🚀 Training 4-Quadrant Model Configuration Block: Fort_Myers_FL_12_GFS_WEATHER_4QUADRANT_GFS_WEATHER_OBS_ETSS_WL_PIVOT_ROBUST_24past_CHRONO
+Epoch 1/350
+Could not load library libcudnn_adv_train.so.8. Error: /contrib/Mamoudou.Ba/miniconda3/envs/mlaws2t/bin/../lib/libcudnn_ops_train.so.8: undefined symbol: _ZN5cudnn3ops26JoinInternalPriorityStreamEP12cudnnContexti, version libcudnn_ops_infer.so.8
