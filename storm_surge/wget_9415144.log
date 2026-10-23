@@ -1,6 +1,0 @@
---2026-10-17 18:18:13--  https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=NOS.COOPS.TAC.WL&begin_date=20210101&end_date=20261016&station=9415144&datum=mllw&units=english&time_zone=gmt&application=MDL&format=csv
-Resolving api.tidesandcurrents.noaa.gov (api.tidesandcurrents.noaa.gov)... 184.196.134.67, 35.169.233.137, 184.192.166.26
-Connecting to api.tidesandcurrents.noaa.gov (api.tidesandcurrents.noaa.gov)|184.196.134.67|:443... connected.
-HTTP request sent, awaiting response... 400 Bad Request
-2026-10-17 18:18:13 ERROR 400: Bad Request.
-
