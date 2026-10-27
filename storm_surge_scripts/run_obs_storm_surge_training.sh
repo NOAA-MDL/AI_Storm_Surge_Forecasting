@@ -25,7 +25,7 @@ LOG_DIR="$BASE_DIR/logs"
 
 # 🌟 Active loop-optimized python script definitions
 #PIVOT_SCRIPT="gru_obs_offshore_feature_gfs_etss_storms_weather_pivot_multi_stations_multi_cycles_training.py"
-PIVOT_SCRIPT="gru_gfs_weather_obs_etss_water_level_gfs_etss_water_level_multi_cycle_rolling_5gfs_training.py"
+PIVOT_SCRIPT="gru_gfs_weather_offshore_feature_obs_etss_water_level_gfs_etss_water_level_multi_cycle_rolling_5gfs_training.py"
 
 
 # 🌟 Load Cluster CUDA Modules (fallback to path if module fails)

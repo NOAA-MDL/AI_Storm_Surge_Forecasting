@@ -99,8 +99,8 @@ for idx, row in df_config.iterrows():
     #if STATION_ID != "8557380": continue
     STATION_NAME = str(row['station_name']).strip().replace(", ", "_").replace(" ", "_").replace(".", "")
 
-    OBS_DATA_FILE = os.path.join(MODELS_PATH, f'obs_{STATION_ID}.csv')
-    GFS_SPATIAL_DATA_FILE = f'training_gfs_etss_spatial_data_{STATION_ID}_2020_2025.csv'
+    OBS_DATA_FILE = os.path.join(MODELS_PATH, f'obs_training_{STATION_ID}.csv')
+    GFS_SPATIAL_DATA_FILE = f'training_gfs_etss_spatial_data_{STATION_ID}_2021_2025.csv'
 
     if not os.path.exists(GFS_SPATIAL_DATA_FILE):
         GFS_SPATIAL_DATA_FILE = os.path.join(MODELS_PATH, f'training_gfs_etss_spatial_data_{STATION_ID}_2021_2025.csv')
@@ -209,7 +209,7 @@ for idx, row in df_config.iterrows():
 
     # --- 5. Training Horizon Loops ---
     for n_past in [24, 48]:
-        MODEL_NAME = f"{STATION_NAME}_{N_FUTURE}_OBS_WEATHER_4QUADRANT_GFS_ETSS_PIVOT_ROBUST_{n_past}past_CHRONO"
+        MODEL_NAME = f"{STATION_NAME}_{N_FUTURE}_ETSS_BIAS_PIVOT_ROBUST_{n_past}past_CHRONO"
         EPOCHS = 350
         model_save_path = os.path.join(MODELS_PATH, f'{MODEL_NAME}.weights.h5')
         print(f"\n🚀 Training 4-Quadrant Model Configuration Block: {MODEL_NAME}")
@@ -293,8 +293,8 @@ for idx, row in df_config.iterrows():
         # Save weights, scalers, and architecture JSON
         model.save_weights(model_save_path)
 
-        s_f_name = f"{STATION_NAME}_scaler_obs_weather_4quadrant_gfs_etss_pivot_robust_{n_past}h_CHRONO.joblib"
-        s_t_name = f"{STATION_NAME}_scaler_obs_weather_4quadrant_gfs_etss_pivot_target_robust_{n_past}h_CHRONO.joblib"
+        s_f_name = f"{STATION_NAME}_scaler_etss_bias_pivot_robust_{n_past}h_CHRONO.joblib"
+        s_t_name = f"{STATION_NAME}_scaler__etss_bias_pivot_target_robust_{n_past}h_CHRONO.joblib"
 
         joblib.dump(scaler_p, os.path.join(MODELS_PATH, s_f_name))
         joblib.dump(scaler_t, os.path.join(MODELS_PATH, s_t_name))
