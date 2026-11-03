@@ -1,13 +1,12 @@
 #!/contrib/Mamoudou.Ba/miniconda3/envs/mlaws2t/bin/python
 '''
-Operational Real-Time 96-Hour ETSS Bias & Surge Forecast Stream Visualizer (Batch Mode).
-Plots multi-variable operational time-series for all available station streams:
-  - Panel 1: Total Water Level (ETSS Raw vs Corrected TWL vs Astronomical Tide)
-  - Panel 2: Surge & Bias (ETSS Guidance Surge vs Corrected Surge vs Bias Shift)
-  - Panel 3: Meteorology Guidance (Wind Speed, Gusts, Pressure)
+Operational Real-Time 96-Hour Stream Dashboard Plotter.
+Skips/breaks lines across time gaps > 2 hours to avoid flat interpolation bridges.
 '''
 
-import os, sys, glob, argparse
+import os, sys, glob, argparse, warnings
+warnings.filterwarnings('ignore')
+
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -16,120 +15,180 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 STREAMS_DIR = '/contrib/Mamoudou.Ba/storm_surge/realtime_forecast_streams'
-PLOTS_DIR = '/contrib/Mamoudou.Ba/storm_surge/plots'
+PLOTS_DIR = '/contrib/Mamoudou.Ba/storm_surge/verification_plots'
 os.makedirs(PLOTS_DIR, exist_ok=True)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Plot 96-Hour Real-Time ETSS Bias Stream Dashboard across all stations")
-    parser.add_argument('--station', type=str, default=None, help="Optional single station ID to plot (default: plots ALL available streams)")
-    parser.add_argument('--file', type=str, default=None, help="Direct path to a specific stream CSV file")
+    parser = argparse.ArgumentParser(description="Plot 96h stream cards")
+    parser.add_argument('--station', type=str, default=None, help="Optional single station ID")
+    parser.add_argument('--max_gap', type=float, default=2.0, help="Max gap in hours before breaking line (default: 2.0)")
     return parser.parse_args()
 
-def plot_single_stream(csv_path):
+def plot_with_gaps(ax, dt_series, val_series, max_gap_hours=2.0, **plot_kwargs):
+    """
+    Plots lines but breaks them with NaNs whenever the gap between
+    consecutive timestamps exceeds max_gap_hours.
+    """
+    if len(dt_series) == 0:
+        return
+    df = pd.DataFrame({'dt': pd.to_datetime(dt_series), 'val': val_series}).sort_values('dt').dropna(subset=['val'])
+    if df.empty:
+        return
+
+    # Identify time deltas in hours
+    diffs = df['dt'].diff().dt.total_seconds() / 3600.0
+    gap_indices = np.where(diffs > max_gap_hours)[0]
+
+    if len(gap_indices) == 0:
+        ax.plot(df['dt'], df['val'], **plot_kwargs)
+    else:
+        # Split into distinct continuous segments
+        start_idx = 0
+        label_used = False
+        for g_idx in gap_indices:
+            seg = df.iloc[start_idx:g_idx]
+            if not seg.empty:
+                kwargs = dict(plot_kwargs)
+                if label_used and 'label' in kwargs:
+                    kwargs.pop('label')
+                ax.plot(seg['dt'], seg['val'], **kwargs)
+                label_used = True
+            start_idx = g_idx
+        
+        # Last segment
+        seg = df.iloc[start_idx:]
+        if not seg.empty:
+            kwargs = dict(plot_kwargs)
+            if label_used and 'label' in kwargs:
+                kwargs.pop('label')
+            ax.plot(seg['dt'], seg['val'], **kwargs)
+
+def plot_stream(csv_file, max_gap_hours=2.0):
     try:
-        df = pd.read_csv(csv_path)
-        if df.empty or 'dt' not in df.columns:
-            print(f"   [!] Skipping empty or invalid file: {csv_path}")
-            return False
-
+        df = pd.read_csv(csv_file)
         df['dt'] = pd.to_datetime(df['dt'])
-        df = df.sort_values('dt')
-
-        station_id = str(df['station_id'].iloc[0])
-        station_name = str(df['station_name'].iloc[0])
-        forecast_origin = str(df['forecast_origin'].iloc[0])
-
-        plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 11), sharex=True, gridspec_kw={'height_ratios': [2, 1.8, 1.2]})
-
-        # --- PANEL 1: TOTAL WATER LEVEL ---
-        if 'etss_water_level_raw_ft' in df.columns:
-            ax1.plot(df['dt'], df['etss_water_level_raw_ft'], color='#d95f02', linestyle='--', linewidth=1.8, label='ETSS Guidance TWL (Raw)')
-        if 'etss_corrected_twl_ft' in df.columns:
-            ax1.plot(df['dt'], df['etss_corrected_twl_ft'], color='#1b9e77', linewidth=2.5, label='4-Quadrant GRU Corrected TWL')
-        if 'etss_tide_ft' in df.columns:
-            ax1.plot(df['dt'], df['etss_tide_ft'], color='#7570b3', linestyle=':', linewidth=1.5, alpha=0.8, label='Astronomical Tide')
-        ax1.set_ylabel('Water Level (ft, MLLW)', fontsize=11, fontweight='bold')
-        ax1.set_title(f'Operational 96-Hour Real-Time Prospective Guidance — {station_name} ({station_id})\nForecast Cycle Origin: {forecast_origin} UTC', fontsize=13, fontweight='bold', pad=10)
-        ax1.legend(loc='upper right', frameon=True, framealpha=0.9)
-        ax1.grid(True, linestyle='--', alpha=0.5)
-
-        # --- PANEL 2: SURGE & MODEL BIAS ---
-        if 'etss_surge_ft' in df.columns:
-            ax2.plot(df['dt'], df['etss_surge_ft'], color='#386cb0', linestyle='--', linewidth=1.8, label='ETSS Surge Guidance')
-        if 'etss_corrected_surge_ft' in df.columns:
-            ax2.plot(df['dt'], df['etss_corrected_surge_ft'], color='#2b83ba', linewidth=2.4, label='Corrected Surge Forecast')
-        if 'predicted_etss_bias_ft' in df.columns:
-            ax2.plot(df['dt'], df['predicted_etss_bias_ft'], color='#e41a1c', linewidth=2.0, label='Predicted Model Bias')
-        ax2.axhline(0, color='black', linewidth=0.8, linestyle='-', alpha=0.5)
-        ax2.set_ylabel('Surge / Bias (ft)', fontsize=11, fontweight='bold')
-        ax2.legend(loc='upper right', frameon=True, framealpha=0.9)
-        ax2.grid(True, linestyle='--', alpha=0.5)
-
-        # --- PANEL 3: METEOROLOGY ---
-        color_wind = '#252525'
-        color_gust = '#cb181d'
-        if 'wind_speed_kts' in df.columns and df['wind_speed_kts'].notna().sum() > 0:
-            ax3.plot(df['dt'], df['wind_speed_kts'], color=color_wind, linewidth=1.6, label='Wind Speed (kts)')
-        if 'wind_gust_kts' in df.columns and df['wind_gust_kts'].notna().sum() > 0:
-            ax3.plot(df['dt'], df['wind_gust_kts'], color=color_gust, linestyle='--', linewidth=1.4, label='Wind Gust (kts)')
-        ax3.set_ylabel('Wind (kts)', fontsize=11, fontweight='bold', color=color_wind)
-        ax3.set_ylim(bottom=0)
-
-        if 'air_pressure_hPa' in df.columns and df['air_pressure_hPa'].notna().sum() > 0:
-            ax3_pres = ax3.twinx()
-            ax3_pres.plot(df['dt'], df['air_pressure_hPa'], color='#7f2704', linestyle='-.', linewidth=1.3, alpha=0.7, label='Pressure (hPa)')
-            ax3_pres.set_ylabel('Pressure (hPa)', fontsize=10, color='#7f2704')
-            ax3_pres.grid(False)
-
-        ax3.set_xlabel('Valid Forecast Time (UTC)', fontsize=11, fontweight='bold')
-        ax3.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d %HZ'))
-        ax3.xaxis.set_major_locator(mdates.HourLocator(interval=12))
-        ax3.xaxis.set_minor_locator(mdates.HourLocator(interval=3))
-        ax3.legend(loc='upper left', frameon=True, framealpha=0.9)
-        ax3.grid(True, linestyle='--', alpha=0.5)
-
-        plt.tight_layout()
-        out_png = os.path.join(PLOTS_DIR, f"realtime_stream_dashboard_{station_id}.png")
-        fig.savefig(out_png, dpi=180, bbox_inches='tight')
-        plt.close(fig)
-        print(f"   [DONE] Saved plot: {out_png}")
-        return True
+        df = df.sort_values('dt').reset_index(drop=True)
     except Exception as e:
-        print(f"   [!] Failed plotting {csv_path}: {e}")
+        print(f"   [!] Failed to read {csv_file}: {e}")
         return False
+
+    station_id = str(df['station_id'].iloc[0]).strip()
+    station_name = str(df['station_name'].iloc[0]).strip() if 'station_name' in df.columns else station_id
+    t0_str = str(df['forecast_origin'].iloc[0])
+    t0 = pd.to_datetime(t0_str)
+
+    df_hindcast = df[df['lead_hour'] <= 0].copy()
+    df_forecast = df[df['lead_hour'] >= 0].copy()
+
+    # Detect if constant / frozen guidance was injected across gaps
+    if not df_forecast.empty and 'etss_tide_ft' in df_forecast.columns:
+        # Mask out values that stay strictly identical for > 2 hours in raw guidance
+        tide_series = df_forecast['etss_tide_ft']
+        repeats = (tide_series.diff() == 0) & (tide_series.shift(1).diff() == 0) & (tide_series.shift(2).diff() == 0)
+        # Set repetitive plateau to NaN so gap splitting takes over
+        df_forecast.loc[repeats, ['etss_tide_ft', 'etss_water_level_raw_ft', 'etss_surge_ft']] = np.nan
+
+    has_obs_wl = ('observed_water_level_ft' in df.columns and df_hindcast['observed_water_level_ft'].notna().sum() > 0)
+    has_obs_res = ('observed_surge_residual_ft' in df.columns and df_hindcast['observed_surge_residual_ft'].notna().sum() > 0)
+
+    plt.rcParams['font.sans-serif'] = 'DejaVu Sans'
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 9), sharex=True, gridspec_kw={'height_ratios': [1.2, 1.0]})
+
+    # --- TOP PANEL: Total Water Level (TWL) ---
+    if has_obs_wl:
+        plot_with_gaps(ax1, df_hindcast['dt'], df_hindcast['observed_water_level_ft'], max_gap_hours,
+                       color='black', linewidth=2.4, marker='o', markersize=3.5, label='Observed Water Level (Hindcast)')
+
+    if not df_hindcast.empty and 'etss_tide_ft' in df_hindcast.columns:
+        plot_with_gaps(ax1, df_hindcast['dt'], df_hindcast['etss_tide_ft'], max_gap_hours,
+                       color='#7570b3', linestyle=':', linewidth=1.4, alpha=0.7)
+
+    if not df_forecast.empty:
+        if 'etss_water_level_raw_ft' in df_forecast.columns:
+            plot_with_gaps(ax1, df_forecast['dt'], df_forecast['etss_water_level_raw_ft'], max_gap_hours,
+                           color='#d95f02', linestyle='--', linewidth=1.8, label='ETSS Guidance TWL (Raw)')
+        if 'etss_corrected_twl_ft' in df_forecast.columns:
+            plot_with_gaps(ax1, df_forecast['dt'], df_forecast['etss_corrected_twl_ft'], max_gap_hours,
+                           color='#1b9e77', linestyle='-', linewidth=2.4, label='4-Quadrant GRU Corrected TWL')
+        if 'etss_tide_ft' in df_forecast.columns:
+            plot_with_gaps(ax1, df_forecast['dt'], df_forecast['etss_tide_ft'], max_gap_hours,
+                           color='#7570b3', linestyle=':', linewidth=1.4, alpha=0.85, label='Astronomical Tide')
+
+    ax1.axvline(t0, color='#e41a1c', linestyle='--', linewidth=2.0, alpha=0.9, label='Forecast Origin ($t_0$)')
+    if not df_hindcast.empty:
+        ax1.axvspan(t0 - pd.Timedelta(hours=48), t0, color='#f0f0f0', alpha=0.5, label='Hindcast Window (-48h)')
+
+    ax1.set_ylabel('Water Level (ft, MLLW)', fontsize=12, fontweight='bold')
+    ax1.grid(True, linestyle=':', alpha=0.6)
+    ax1.legend(loc='upper right', framealpha=0.9, fontsize=9, ncol=2)
+
+    # --- BOTTOM PANEL: Surge, Residual, and Bias ---
+    if has_obs_res:
+        plot_with_gaps(ax2, df_hindcast['dt'], df_hindcast['observed_surge_residual_ft'], max_gap_hours,
+                       color='black', linewidth=2.2, marker='o', markersize=3.5, label='Observed Residual (Hindcast)')
+
+    if not df_forecast.empty:
+        if 'etss_surge_ft' in df_forecast.columns:
+            plot_with_gaps(ax2, df_forecast['dt'], df_forecast['etss_surge_ft'], max_gap_hours,
+                           color='#386cb0', linestyle='--', linewidth=1.8, label='ETSS Surge Guidance')
+        if 'etss_corrected_surge_ft' in df_forecast.columns:
+            plot_with_gaps(ax2, df_forecast['dt'], df_forecast['etss_corrected_surge_ft'], max_gap_hours,
+                           color='#1f78b4', linestyle='-', linewidth=2.4, label='Corrected Surge Forecast')
+        if 'predicted_etss_bias_ft' in df_forecast.columns:
+            plot_with_gaps(ax2, df_forecast['dt'], df_forecast['predicted_etss_bias_ft'], max_gap_hours,
+                           color='#e31a1c', linestyle='-', linewidth=2.0, label='Predicted Model Bias')
+
+    ax2.axhline(0, color='gray', linestyle='-', linewidth=0.8, alpha=0.7)
+    ax2.axvline(t0, color='#e41a1c', linestyle='--', linewidth=2.0, alpha=0.9)
+    if not df_hindcast.empty:
+        ax2.axvspan(t0 - pd.Timedelta(hours=48), t0, color='#f0f0f0', alpha=0.5)
+
+    ax2.set_ylabel('Surge / Bias (ft)', fontsize=12, fontweight='bold')
+    ax2.grid(True, linestyle=':', alpha=0.6)
+    ax2.legend(loc='upper right', framealpha=0.9, fontsize=9, ncol=2)
+
+    t_start = t0 - pd.Timedelta(hours=48)
+    t_end = t0 + pd.Timedelta(hours=96)
+    ax2.set_xlim(t_start, t_end)
+
+    ax2.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter('%b %d\n%HZ'))
+    ax2.xaxis.set_minor_locator(mdates.HourLocator(byhour=[6, 12, 18]))
+
+    fig.suptitle(f"Operational 96-Hour Real-Time Prospective Guidance — {station_name} ({station_id})\nForecast Cycle Origin: {t0.strftime('%Y-%m-%d %H:%M:%S UTC')}",
+                 fontsize=14, fontweight='bold', y=0.98)
+
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.92)
+
+    t0_tag = t0.strftime('%Y%m%d_%H%M')
+    plot_fname = f"realtime_stream_forecast_plot_{station_id}_{t0_tag}.png"
+    out_plot_path = os.path.join(PLOTS_DIR, plot_fname)
+    plt.savefig(out_plot_path, dpi=200, bbox_inches='tight')
+    plt.close(fig)
+
+    print(f"   ✓ Plotted dashboard (gap skipping enabled > {max_gap_hours}h) -> {plot_fname}")
+    return True
 
 def main():
     args = parse_args()
+    print("=" * 80)
+    print("OPERATIONAL 96-HOUR STREAM VISUALIZER (GAP-SKIPPING ENABLED)")
+    print(f"Streams Directory : {STREAMS_DIR}")
+    print(f"Max Allowed Gap   : {args.max_gap} hours")
+    print("=" * 80)
 
-    if args.file and os.path.exists(args.file):
-        files_to_plot = [args.file]
-    elif args.station:
-        matches = sorted(glob.glob(os.path.join(STREAMS_DIR, f"realtime_etss_bias_96h_forecast_{args.station}_*.csv")))
-        if not matches:
-            print(f"Error: No stream files found for station {args.station} in {STREAMS_DIR}")
-            sys.exit(1)
-        files_to_plot = [matches[-1]]
-    else:
-        # Find the latest stream file for each station in STREAMS_DIR
-        all_csvs = sorted(glob.glob(os.path.join(STREAMS_DIR, "realtime_etss_bias_96h_forecast_*.csv")))
-        if not all_csvs:
-            print(f"Error: No stream CSV files found in {STREAMS_DIR}")
-            sys.exit(1)
+    pattern = os.path.join(STREAMS_DIR, "realtime_etss_bias_96h_forecast_*.csv")
+    csv_files = sorted(glob.glob(pattern))
 
-        station_latest = {}
-        for path in all_csvs:
-            sid = os.path.basename(path).split('_')[5]
-            station_latest[sid] = path
+    if args.station:
+        csv_files = [f for f in csv_files if f"_{args.station.strip()}_" in os.path.basename(f)]
 
-        files_to_plot = list(station_latest.values())
+    for f in csv_files:
+        plot_stream(f, max_gap_hours=args.max_gap)
 
-    print(f"Found {len(files_to_plot)} stream file(s) to plot.")
-    for idx, fpath in enumerate(files_to_plot, 1):
-        print(f"[{idx}/{len(files_to_plot)}] Plotting {os.path.basename(fpath)}...")
-        plot_single_stream(fpath)
-
-    print("Batch plotting complete.")
+    print("=" * 80)
+    print("Plotting complete.")
 
 if __name__ == '__main__':
     main()
