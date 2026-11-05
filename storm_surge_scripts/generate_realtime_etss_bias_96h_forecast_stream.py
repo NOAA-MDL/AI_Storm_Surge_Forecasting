@@ -2,7 +2,7 @@
 '''
 Operational Real-Time ETSS Bias / Surge Residual 96-Hour Forecast Stream Generator.
 Batch Multi-Station Engine utilizing trained 4-Quadrant Spatial GRU Models ([None, 36, 26]).
-Guarantees C0 continuous chunk junctions and eliminates all 12-hour staircase notches.
+Strictly utilizes real-time operational feeds (obs_twl_<id>.csv) to avoid training data conflicts.
 '''
 
 import os, sys, gc, glob, argparse, warnings
@@ -24,11 +24,9 @@ MODELS_PATH = '/contrib/Mamoudou.Ba/storm_surge/'
 STREAMS_DIR = '/contrib/Mamoudou.Ba/storm_surge/realtime_forecast_streams'
 os.makedirs(STREAMS_DIR, exist_ok=True)
 
-CONFIG_FILE = os.path.join(MODELS_PATH, 'all_stations_config.csv')
+CONFIG_FILE = os.path.join(MODELS_PATH, 'stations_config.csv')
 if not os.path.exists(CONFIG_FILE):
-    CONFIG_FILE = 'all_stations_config.csv'
-if not os.path.exists(CONFIG_FILE):
-    CONFIG_FILE = os.path.join(MODELS_PATH, 'stations_config.csv')
+    CONFIG_FILE = os.path.join(MODELS_PATH, 'all_stations_config.csv')
 if not os.path.exists(CONFIG_FILE):
     CONFIG_FILE = 'stations_config.csv'
 
@@ -54,15 +52,6 @@ OBS_WEATHER_COLS = OBS_MET_BASE + GFS_4QUAD_COLS
 GFS_GUIDANCE_COLS = GFS_MET_BASE + GFS_4QUAD_COLS
 TARGET_COL = 'surge_residual'
 
-def clean_numeric_df(df, cols, fill_val=0.0):
-    for c in cols:
-        if c not in df.columns:
-            df[c] = fill_val
-        else:
-            df[c] = pd.to_numeric(df[c], errors='coerce')
-            df[c] = df[c].interpolate(method='linear').ffill().bfill().fillna(fill_val)
-    return df
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Operational 96h Stream Generator")
     parser.add_argument('--config', type=str, default=CONFIG_FILE, help="Stations config CSV")
@@ -71,7 +60,7 @@ def parse_args():
     parser.add_argument('--horizon', type=int, default=N_FORECAST_HORIZON, help="Horizon hours (96)")
     parser.add_argument('--lookback', type=int, default=HINDCAST_LOOKBACK, help="Hindcast lookback hours (48)")
     parser.add_argument('--t0', type=str, default=None, help="Explicit forecast origin (YYYY-MM-DD HH:MM)")
-    parser.add_argument('--max_gap', type=float, default=2.0, help="Max raw data gap allowed in hours (default: 2.0)")
+    parser.add_argument('--max_gap', type=float, default=6.0, help="Max raw data gap allowed in hours (default: 6.0)")
     return parser.parse_args()
 
 def load_and_parse(file_path):
@@ -79,36 +68,50 @@ def load_and_parse(file_path):
     sentinels = [9999.0, 9999.00, 99999.0, 99999.000, -9999.0, -99999.0]
     df = df.replace(sentinels, np.nan)
 
-    time_candidates = ['timestamp_gui', 'timestamp', 'dt', 'datetime', 'date_time', 'valid_time', 'time', 'date']
+    time_candidates = ['timestamp_gui', 'timestamp', 'dt', 'datetime', 'date_time', 'valid_time', 'time', 'date', 'Date Time', 't']
     t_col = next((c for c in time_candidates if c in df.columns), None)
     if not t_col:
-        matched = [c for c in df.columns if any(k in c.lower() for k in ['time', 'date', 'dt'])]
+        matched = [c for c in df.columns if any(k in c.lower() for k in ['time', 'date', 'dt', 't'])]
         if matched: t_col = matched[0]
     if not t_col: raise KeyError(f"No datetime column in {file_path}")
 
-    df[t_col] = df[t_col].astype(str).str.replace(r'(\d{2}) (\d{2}) (\d{2})$', r'\1:\2:\3', regex=True)
-    df['dt'] = pd.to_datetime(df[t_col], errors='coerce', format='mixed')
+    # Standardize space-separated times: "2026-01-01 00 00 00" -> "2026-01-01 00:00:00"
+    raw_str = df[t_col].astype(str).str.strip()
+    fixed_str = raw_str.str.replace(r'\s+(\d{1,2})\s+(\d{2})\s+(\d{2})$', r' \1:\2:\3', regex=True)
+    fixed_str = fixed_str.str.replace(r'\s+(\d{1,2})\s+(\d{2})$', r' \1:\2:00', regex=True)
+
+    df['dt'] = pd.to_datetime(fixed_str, errors='coerce')
+    if df['dt'].isna().sum() > (0.5 * len(df)):
+        df['dt'] = pd.to_datetime(fixed_str, errors='coerce', format='mixed')
+
     if df['dt'].dt.tz is not None:
         df['dt'] = df['dt'].dt.tz_localize(None)
     df['dt'] = df['dt'].dt.round('h')
     return df.dropna(subset=['dt'])
 
 def resolve_station_files(station_id):
+    """
+    Resolves the operational forecast inputs.
+    Strictly locks observation input to the real-time operational file obs_twl_<id>.csv
+    to avoid reading static 2021_2026 training files.
+    """
     gfs_candidates = [
         os.path.join(MODELS_PATH, f'test_gfs_etss_spatial_data_{station_id}_2026.csv'),
         os.path.join(MODELS_PATH, f'test_gfs_etss_spatial_data_{station_id}.csv'),
-        f'test_gfs_etss_spatial_data_{station_id}_2026.csv'
     ]
+    gfs_matches = glob.glob(os.path.join(MODELS_PATH, f'*{station_id}*spatial*.csv'))
+    gfs_candidates.extend(gfs_matches)
     gfs_path = next((f for f in gfs_candidates if os.path.exists(f)), None)
 
-    obs_candidates = [
-        os.path.join(MODELS_PATH, f'obs_training_{station_id}.csv'),
-        os.path.join(MODELS_PATH, f'obs_training_{station_id}_2026.csv'),
-        os.path.join(MODELS_PATH, f'realtime_obs_{station_id}_2026.csv'),
-        os.path.join(MODELS_PATH, f'obs_{station_id}.csv'),
-        f'obs_training_{station_id}.csv'
-    ]
-    obs_path = next((f for f in obs_candidates if os.path.exists(f)), None)
+    # Strictly prioritize operational real-time observations
+    primary_obs = os.path.join(MODELS_PATH, f'obs_twl_{station_id}.csv')
+    if os.path.exists(primary_obs):
+        obs_path = primary_obs
+    else:
+        # Fallback only to standard wl_<id>.csv if obs_twl is not yet created
+        fallback_wl = os.path.join(MODELS_PATH, f'wl_{station_id}.csv')
+        obs_path = fallback_wl if os.path.exists(fallback_wl) else None
+
     return gfs_path, obs_path
 
 def load_station_models(station_id, station_name, mode):
@@ -134,7 +137,7 @@ def load_station_models(station_id, station_name, mode):
                 break
 
         if not (m_json and os.path.exists(m_h5) and sf_path and st_path):
-            for ident in [name_clean, station_id, name_no_state]:
+            for ident in [station_id, name_clean, name_no_state]:
                 if not m_json:
                     j_m = glob.glob(os.path.join(MODELS_PATH, f"*{ident}*{mode}*{n_past}past*.json"))
                     if j_m:
@@ -148,7 +151,8 @@ def load_station_models(station_id, station_name, mode):
                 if not st_path:
                     st_m = glob.glob(os.path.join(MODELS_PATH, f"*{ident}*scaler*etss*{mode.lower()}*target*robust_{n_past}h*.joblib"))
                     if st_m: st_path = st_m[0]
-                if m_json and os.path.exists(m_h5) and sf_path and st_path: break
+                if m_json and os.path.exists(m_h5) and sf_path and st_path:
+                    break
 
         if m_json and os.path.exists(m_h5) and sf_path and st_path:
             with open(m_json, 'r') as f:
@@ -221,15 +225,20 @@ def predict_single_chunk(cached_models, cached_scalers, data_full, chunk_origin,
     combined_bias = ((h24[:target_len] * weight_24h) + (h48[:target_len] * (1.0 - weight_24h)))[:target_len]
     return np.nan_to_num(combined_bias, nan=0.0)
 
-def process_station(station_id, station_name, mode, horizon, lookback, user_t0, max_gap_hours=2.0):
+def process_station(station_id, station_name, mode, horizon, lookback, user_t0, max_gap_hours=6.0):
     gfs_path, obs_path = resolve_station_files(station_id)
-    if not gfs_path or not obs_path:
-        print(f"   [SKIP] Missing files for {station_id}")
+    if not gfs_path:
+        print(f"   [SKIP] Missing GFS file for {station_id}")
         return False
+    if not obs_path:
+        print(f"   [SKIP] Missing real-time OBS file (obs_twl_{station_id}.csv) for {station_id}")
+        return False
+
+    print(f"   [INFO] Using Real-Time Obs Source: {os.path.basename(obs_path)}")
 
     cached_models, cached_scalers = load_station_models(station_id, station_name, mode)
     if not cached_models:
-        print(f"   [SKIP] Missing models for {station_id}")
+        print(f"   [SKIP] Missing models/scalers for {station_name} ({station_id})")
         return False
 
     try:
@@ -242,7 +251,7 @@ def process_station(station_id, station_name, mode, horizon, lookback, user_t0, 
     for c in range(1, N_OFFSHORE_CELLS + 1):
         u_col, v_col, ws_col = f'c{c}_wind_u_gui', f'c{c}_wind_v_gui', f'c{c}_wind_speed_gui'
         if u_col in df_g.columns and v_col in df_g.columns:
-            df_g[ws_col] = np.sqrt(pd.to_numeric(df_g[u_col], errors='coerce')**2 + 
+            df_g[ws_col] = np.sqrt(pd.to_numeric(df_g[u_col], errors='coerce')**2 +
                                    pd.to_numeric(df_g[v_col], errors='coerce')**2)
         elif ws_col not in df_g.columns:
             df_g[ws_col] = 0.0
@@ -250,41 +259,48 @@ def process_station(station_id, station_name, mode, horizon, lookback, user_t0, 
     for col in GFS_4QUAD_COLS:
         if col not in df_g.columns: df_g[col] = 0.0
 
-    for col in ['etss_surge', 'etss_tide', 'etss_bias', 'etss_water_level', 'SURGE']:
+    for col in ['etss_surge', 'etss_tide', 'etss_bias', 'etss_water_level', 'SURGE', 'TIDE']:
         if col in df_g.columns:
             df_g[col] = pd.to_numeric(df_g[col], errors='coerce')
 
     df_g_unique = df_g.sort_values('dt').drop_duplicates(subset=['dt'], keep='last').set_index('dt').sort_index()
     df_o_unique = df_o.sort_values('dt').drop_duplicates(subset=['dt'], keep='last').set_index('dt').sort_index()
 
-    dt_series = pd.Series(df_g_unique.index)
-    breaks = (dt_series.diff().dt.total_seconds() / 3600.0 > max_gap_hours).cumsum()
-    df_g_unique['block_id'] = breaks.values
-
-    clean_blocks = []
-    for bid, grp in df_g_unique.groupby('block_id'):
-        span_hours = (grp.index.max() - grp.index.min()).total_seconds() / 3600.0
-        if span_hours >= horizon:
-            clean_blocks.append(grp)
-
+    # Determine t0 origin: anchor to end of continuous guidance stream
     if user_t0:
         t0 = pd.to_datetime(user_t0)
-    elif clean_blocks:
-        chosen_block = clean_blocks[-1]
-        t0 = chosen_block.index[0]
     else:
-        print(f"   [SKIP] Station {station_name} ({station_id}) has no continuous block >= {horizon}h.")
-        return False
+        dt_series = pd.Series(df_g_unique.index)
+        breaks = (dt_series.diff().dt.total_seconds() / 3600.0 > max_gap_hours).cumsum()
+        df_g_unique['block_id'] = breaks.values
+
+        clean_blocks = []
+        for _, grp in df_g_unique.groupby('block_id'):
+            span_hours = (grp.index.max() - grp.index.min()).total_seconds() / 3600.0
+            if span_hours >= horizon:
+                clean_blocks.append(grp)
+
+        if clean_blocks:
+            chosen_block = clean_blocks[-1]
+            if len(chosen_block) >= horizon:
+                t0 = chosen_block.index[-horizon]
+            else:
+                t0 = chosen_block.index[0]
+        else:
+            if len(df_g_unique) >= horizon:
+                t0 = df_g_unique.index[-horizon]
+            else:
+                t0 = df_g_unique.index[0]
 
     t0 = pd.to_datetime(t0)
 
-    # Full timeline for hindcast observations
+    # Build continuous timeline
     data_full = pd.DataFrame(index=df_g_unique.index.union(df_o_unique.index)).sort_index()
     for col in df_g_unique.columns:
         if col != 'block_id': data_full[col] = df_g_unique[col]
 
-    data_full['water_level'] = pd.to_numeric(df_o_unique['water_level'] if 'water_level' in df_o_unique.columns else np.nan, errors='coerce')
-    data_full['water_level'] = data_full['water_level'].interpolate(method='linear').ffill().bfill().fillna(0.0)
+    wl_col = next((c for c in ['water_level', 'Water Level', 'wl', 'v'] if c in df_o_unique.columns), None)
+    data_full['water_level'] = pd.to_numeric(df_o_unique[wl_col] if wl_col else np.nan, errors='coerce')
 
     t_cols = [c for c in df_g_unique.columns if 'tide' in c.lower()]
     data_full['etss_tide'] = df_g_unique[t_cols[0]] if t_cols else 0.0
@@ -301,21 +317,41 @@ def process_station(station_id, station_name, mode, horizon, lookback, user_t0, 
         else:
             data_full[met_base] = data_full[gui_col]
 
+    # Residual target calculation
     data_full[TARGET_COL] = data_full['water_level'] - data_full['etss_tide']
 
+    # Hindcast window [t0 - lookback, t0]
+    t_hindcast_start = t0 - pd.Timedelta(hours=lookback)
+    hindcast_dates = pd.date_range(start=t_hindcast_start, end=t0, freq='h')
+    df_hindcast_data = data_full.loc[data_full.index.intersection(hindcast_dates)].copy()
+
+    # Outage Guard: Check for real observations in the hindcast window
+    h_obs_raw = df_hindcast_data['water_level'].reindex(hindcast_dates)
+    valid_obs_count = h_obs_raw.dropna().nunique()
+    
+    if valid_obs_count <= 2:
+        print(f"   [!] Note: Flat or missing observations in real-time feed for {station_id}. Neutralizing bias anchor.")
+        h_obs_wl = np.full(len(hindcast_dates), np.nan)
+        h_obs_res = np.full(len(hindcast_dates), np.nan)
+        obs_res_t0 = float(data_full.loc[t0, 'etss_surge']) if t0 in data_full.index else 0.0
+        bias_anchor_t0 = 0.0
+    else:
+        h_obs_wl = h_obs_raw.interpolate(method='linear').ffill().bfill().values
+        h_tide = df_hindcast_data['etss_tide'].reindex(hindcast_dates).ffill().bfill().values
+        h_obs_res = h_obs_wl - h_tide
+        obs_res_t0 = float(h_obs_res[-1])
+        etss_surge_t0 = float(df_hindcast_data['etss_surge'].reindex(hindcast_dates).ffill().bfill().values[-1])
+        bias_anchor_t0 = obs_res_t0 - etss_surge_t0
+
+    # Fill remaining columns in data_full for tensor extraction
+    data_full['water_level'] = data_full['water_level'].interpolate(method='linear').ffill().bfill().fillna(0.0)
+    data_full[TARGET_COL] = data_full[TARGET_COL].interpolate(method='linear').ffill().bfill().fillna(0.0)
     all_needed_cols = list(set(OBS_WEATHER_COLS + GFS_GUIDANCE_COLS + [TARGET_COL, 'etss_tide', 'etss_surge', 'water_level']))
     for col in all_needed_cols:
         if col not in data_full.columns: data_full[col] = 0.0
         data_full[col] = pd.to_numeric(data_full[col], errors='coerce').interpolate(method='linear').ffill().bfill().fillna(0.0)
 
-    # 1. Anchor Values at t0
-    obs_res_t0 = float(data_full.loc[t0, TARGET_COL]) if t0 in data_full.index else float(data_full.loc[:t0].iloc[-1][TARGET_COL])
-    etss_surge_t0 = float(data_full.loc[t0, 'etss_surge']) if t0 in data_full.index else float(data_full.loc[:t0].iloc[-1]['etss_surge'])
-    tide_t0 = float(data_full.loc[t0, 'etss_tide']) if t0 in data_full.index else float(data_full.loc[:t0].iloc[-1]['etss_tide'])
-
-    bias_anchor_t0 = obs_res_t0 - etss_surge_t0
-
-    # 2. Prospective Window [t0 + 1h, t0 + horizon]
+    # Prospective Window [t0 + 1h, t0 + horizon]
     fcst_dates = pd.date_range(start=t0 + pd.Timedelta(hours=1), periods=horizon, freq='h')
     forecast_window = pd.DataFrame(index=fcst_dates)
     for col in GFS_GUIDANCE_COLS + ['etss_tide', 'etss_surge']:
@@ -326,11 +362,11 @@ def process_station(station_id, station_name, mode, horizon, lookback, user_t0, 
     forecast_window['etss_surge_guidance'] = forecast_window['etss_surge']
     rollout_len = len(forecast_window)
 
-    # 3. Continuous Rollout with C0 Junction Stitching
+    # Rollout with C0 Junction Stitching
     continuous_predicted_bias = []
     current_anchor_time = t0
     running_feedback = obs_res_t0
-    last_chunk_endpoint = bias_anchor_t0  # Stitch point starts directly at t0 bias
+    last_chunk_endpoint = bias_anchor_t0
 
     num_chunks = int(np.ceil(rollout_len / 12.0))
     for c_idx in range(num_chunks):
@@ -340,16 +376,13 @@ def process_station(station_id, station_name, mode, horizon, lookback, user_t0, 
         if chunk_gui.empty: break
 
         raw_c_bias = predict_single_chunk(cached_models, cached_scalers, data_full, current_anchor_time, chunk_gui, running_feedback)
-        
-        # Stitch chunk start to previous endpoint to prevent drops/jumps
-        # Transition offset decays across chunk length
+
         step_offset = last_chunk_endpoint - raw_c_bias[0]
         decay = np.exp(-np.arange(len(raw_c_bias)) / 8.0)
         stitched_chunk_bias = raw_c_bias + (step_offset * decay)
 
         continuous_predicted_bias.extend(stitched_chunk_bias)
 
-        # Autoregressive update: feed generated surge residual into data_full history
         chunk_surge_pred = chunk_gui['etss_surge'].values + stitched_chunk_bias
         for dt_val, s_val in zip(chunk_gui.index, chunk_surge_pred):
             data_full.loc[dt_val, TARGET_COL] = s_val
@@ -384,18 +417,11 @@ def process_station(station_id, station_name, mode, horizon, lookback, user_t0, 
         'pivot_total_water_level_ft': corrected_wl
     })
 
-    # Hindcast window [t0 - lookback, t0]
-    t_hindcast_start = t0 - pd.Timedelta(hours=lookback)
-    hindcast_dates = pd.date_range(start=t_hindcast_start, end=t0, freq='h')
-    df_hindcast_data = data_full.loc[data_full.index.intersection(hindcast_dates)].copy()
-
+    # Build hindcast export dataframe
     h_len = len(hindcast_dates)
     h_lead_hours = np.linspace(-h_len + 1, 0, h_len, dtype=int)
-
-    h_obs_wl = df_hindcast_data['water_level'].reindex(hindcast_dates).ffill().bfill().values
-    h_tide = df_hindcast_data['etss_tide'].reindex(hindcast_dates).ffill().bfill().values
-    h_surge = df_hindcast_data['etss_surge'].reindex(hindcast_dates).ffill().bfill().values
-    h_obs_res = h_obs_wl - h_tide
+    h_tide_exp = df_hindcast_data['etss_tide'].reindex(hindcast_dates).ffill().bfill().values
+    h_surge_exp = df_hindcast_data['etss_surge'].reindex(hindcast_dates).ffill().bfill().values
 
     df_hindcast = pd.DataFrame({
         'dt': hindcast_dates,
@@ -405,9 +431,9 @@ def process_station(station_id, station_name, mode, horizon, lookback, user_t0, 
         'lead_hour': h_lead_hours,
         'observed_water_level_ft': h_obs_wl,
         'observed_surge_residual_ft': h_obs_res,
-        'etss_tide_ft': h_tide,
-        'etss_surge_ft': h_surge,
-        'etss_water_level_raw_ft': h_surge + h_tide,
+        'etss_tide_ft': h_tide_exp,
+        'etss_surge_ft': h_surge_exp,
+        'etss_water_level_raw_ft': h_surge_exp + h_tide_exp,
         'predicted_etss_bias_ft': np.nan,
         'etss_corrected_surge_ft': np.nan,
         'etss_corrected_twl_ft': np.nan,
@@ -415,10 +441,11 @@ def process_station(station_id, station_name, mode, horizon, lookback, user_t0, 
         'pivot_total_water_level_ft': np.nan
     })
 
-    # Precise t0 anchor pinning
-    df_hindcast.loc[df_hindcast['lead_hour'] == 0, 'predicted_etss_bias_ft'] = bias_anchor_t0
-    df_hindcast.loc[df_hindcast['lead_hour'] == 0, 'etss_corrected_surge_ft'] = obs_res_t0
-    df_hindcast.loc[df_hindcast['lead_hour'] == 0, 'etss_corrected_twl_ft'] = obs_res_t0 + tide_t0
+    if valid_obs_count > 2:
+        tide_t0 = float(h_tide_exp[-1])
+        df_hindcast.loc[df_hindcast['lead_hour'] == 0, 'predicted_etss_bias_ft'] = bias_anchor_t0
+        df_hindcast.loc[df_hindcast['lead_hour'] == 0, 'etss_corrected_surge_ft'] = obs_res_t0
+        df_hindcast.loc[df_hindcast['lead_hour'] == 0, 'etss_corrected_twl_ft'] = obs_res_t0 + tide_t0
 
     export_df = pd.concat([df_hindcast, df_forecast], ignore_index=True)
     export_df = export_df.sort_values('dt').reset_index(drop=True)
@@ -440,7 +467,7 @@ def process_station(station_id, station_name, mode, horizon, lookback, user_t0, 
 def main():
     args = parse_args()
     print("=" * 80)
-    print("OPERATIONAL 96-HOUR ETSS BIAS STREAM GENERATOR (SEAMLESS JUNCTIONS)")
+    print("OPERATIONAL 96-HOUR ETSS BIAS STREAM GENERATOR (ALL STATIONS)")
     print(f"Config File    : {args.config}")
     print(f"Horizon/Look   : +{args.horizon}h / -{args.lookback}h")
     print(f"Max Raw Gap    : {args.max_gap}h")
