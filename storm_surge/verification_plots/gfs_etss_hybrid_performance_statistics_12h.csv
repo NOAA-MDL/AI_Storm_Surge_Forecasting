@@ -1,7 +1,0 @@
-station_id,station_name,month_year,surrogate_mode,scaler,ai_wl_rmse_ft,ai_wl_bias_ft,etss_wl_rmse_ft,etss_wl_bias_ft,ai_surge_rmse_ft,etss_surge_rmse_ft,ai_wl_error_reduction_pct
-8726520,St_Petersburg_FL,01/2026,GFS+ETSS-HYBRID,ROBUST,0.167,0.003,0.171,-0.005,0.106,0.113,1.9
-8726520,St_Petersburg_FL,02/2026,GFS+ETSS-HYBRID,ROBUST,0.158,-0.004,0.155,-0.02,0.105,0.104,-1.9
-8726520,St_Petersburg_FL,03/2026,GFS+ETSS-HYBRID,ROBUST,0.151,0.005,0.159,0.003,0.101,0.114,5.2
-8726520,St_Petersburg_FL,04/2026,GFS+ETSS-HYBRID,ROBUST,0.122,-0.002,0.144,-0.011,0.078,0.109,15.0
-8726520,St_Petersburg_FL,05/2026,GFS+ETSS-HYBRID,ROBUST,0.125,-0.001,0.137,0.009,0.087,0.105,8.7
-8726520,St_Petersburg_FL,06/2026,GFS+ETSS-HYBRID,ROBUST,0.014,-0.008,0.027,-0.019,0.019,0.02,49.4
